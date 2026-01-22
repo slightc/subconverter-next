@@ -1,5 +1,5 @@
 export const metadata = {
-  title: 'Subconverter',
+  title: 'Subconverter Next',
   description: 'Subscription converter API service',
 };
 

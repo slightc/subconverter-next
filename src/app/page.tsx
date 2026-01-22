@@ -265,7 +265,7 @@ export default function Home() {
         </div>
 
         <footer style={styles.footer}>
-          <p>Powered by Next.js | <a href="https://github.com" style={styles.footerLink}>GitHub</a></p>
+          <p>Powered by Next.js | <a href="https://github.com/slightc/subconverter-next" style={styles.footerLink}>GitHub</a></p>
         </footer>
       </div>
     </main>

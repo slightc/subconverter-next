@@ -125,6 +125,13 @@ function parseRuleLine(line: string, targetGroup: string): string | null {
   const value = parts[1];
   if (!value) return null;
 
+  // Filter out port rules with protocol suffix (e.g., 443/udp, 80/tcp)
+  // These are not supported by Clash
+  if ((mappedType === 'DST-PORT' || mappedType === 'SRC-PORT') && 
+      value.includes('/')) {
+    return null;
+  }
+
   // Build rule string
   let rule = `${mappedType},${value},${targetGroup}`;
 

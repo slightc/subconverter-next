@@ -147,7 +147,8 @@ function parseProxyGroup(value: string): ProxyGroupConfig | null {
         proxyGroup.tolerance = parseInt(nums[1], 10);
       }
     } else if (isRegexPattern(part)) {
-      // Regex filter pattern
+      // Regex filter pattern - add to proxies array to preserve order
+      proxyGroup.proxies.push(part);
       proxyGroup.useRegexFilter = true;
       proxyGroup.regexFilter = part;
     }

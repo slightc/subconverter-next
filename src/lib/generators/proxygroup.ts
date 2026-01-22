@@ -60,41 +60,44 @@ function generateSingleProxyGroup(
   allProxyNames: string[],
   allGroupNames: Set<string>
 ): ClashProxyGroup | null {
-  const { name, type, proxies: configProxies, url, interval, tolerance, strategy, useRegexFilter, regexFilter } = config;
+  const { name, type, proxies: configProxies, url, interval, tolerance, strategy } = config;
 
-  let resolvedProxies: string[] = [];
-
-  // First, apply regex filter if present
-  if (useRegexFilter && regexFilter) {
-    try {
-      const regex = new RegExp(regexFilter, 'i');
-      const filtered = allProxyNames.filter(proxyName => regex.test(proxyName));
-      resolvedProxies.push(...filtered);
-    } catch (e) {
-      console.error(`Invalid regex filter: ${regexFilter}`, e);
-      // Fallback: use all proxies
-      resolvedProxies.push(...allProxyNames);
+  const resolvedProxies: string[] = [];
+  const seen = new Set<string>();
+  
+  // Helper to add proxy while avoiding duplicates and preserving order
+  const addProxy = (proxyName: string) => {
+    if (!seen.has(proxyName)) {
+      seen.add(proxyName);
+      resolvedProxies.push(proxyName);
     }
-  }
+  };
+  
+  // Helper to add multiple proxies
+  const addProxies = (proxyNames: string[]) => {
+    for (const p of proxyNames) {
+      addProxy(p);
+    }
+  };
 
-  // Then, also process explicit proxy references
+  // Process proxies in order as defined in config
   for (const proxy of configProxies) {
     if (SPECIAL_PROXIES.includes(proxy)) {
       // Special proxy (DIRECT, REJECT)
-      resolvedProxies.push(proxy);
+      addProxy(proxy);
     } else if (allGroupNames.has(proxy)) {
       // Reference to another group
-      resolvedProxies.push(proxy);
+      addProxy(proxy);
     } else if (proxy === '.*' || proxy === '.+') {
       // All proxies wildcard - add all proxy names
-      resolvedProxies.push(...allProxyNames);
+      addProxies(allProxyNames);
     } else if (proxy.startsWith('!!')) {
       // Negative regex filter
       const pattern = proxy.substring(2);
       try {
         const regex = new RegExp(pattern, 'i');
         const filtered = allProxyNames.filter(n => !regex.test(n));
-        resolvedProxies.push(...filtered);
+        addProxies(filtered);
       } catch (e) {
         console.error(`Invalid negative regex: ${pattern}`, e);
       }
@@ -103,32 +106,29 @@ function generateSingleProxyGroup(
       try {
         const regex = new RegExp(proxy, 'i');
         const filtered = allProxyNames.filter(n => regex.test(n));
-        resolvedProxies.push(...filtered);
+        addProxies(filtered);
       } catch (e) {
         // Treat as literal name
         if (allProxyNames.includes(proxy)) {
-          resolvedProxies.push(proxy);
+          addProxy(proxy);
         }
       }
     } else {
       // Literal proxy name or group name
       if (allProxyNames.includes(proxy)) {
-        resolvedProxies.push(proxy);
+        addProxy(proxy);
       } else if (allGroupNames.has(proxy)) {
-        resolvedProxies.push(proxy);
+        addProxy(proxy);
       }
     }
   }
-
-  // Remove duplicates while preserving order
-  resolvedProxies = [...new Set(resolvedProxies)];
-
+  
   // For select type, if no proxies but has groups, that's fine
   // For auto types, need actual proxies
   if (resolvedProxies.length === 0) {
     // Add all proxies as fallback for url-test and fallback types
     if (type === 'url-test' || type === 'fallback') {
-      resolvedProxies = [...allProxyNames];
+      addProxies(allProxyNames);
     }
   }
 

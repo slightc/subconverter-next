@@ -39,7 +39,13 @@ export default function Home() {
     const params = new URLSearchParams();
     
     params.set('target', target);
-    params.set('url', subscriptionUrl);
+    // Parse multiple URLs (one per line) and join with |
+    const urls = subscriptionUrl
+      .split('\n')
+      .map(url => url.trim())
+      .filter(url => url.length > 0)
+      .join('|');
+    params.set('url', urls);
     
     const configUrl = configPreset === 'custom' ? customConfig : configPreset;
     if (configUrl) {
@@ -76,12 +82,12 @@ export default function Home() {
           {/* Subscription URL */}
           <div style={styles.formGroup}>
             <label style={styles.label}>Subscription URL *</label>
-            <input
-              type="text"
+            <textarea
               value={subscriptionUrl}
               onChange={(e) => setSubscriptionUrl(e.target.value)}
-              placeholder="Enter subscription URL (multiple URLs separated by |)"
-              style={styles.input}
+              placeholder={`Enter subscription URL(s), one per line, Example:\nhttps://example.com/sub1\nhttps://example.com/sub2`}
+              style={styles.textarea}
+              rows={4}
             />
           </div>
 
@@ -229,7 +235,7 @@ export default function Home() {
                 <tr>
                   <td style={styles.paramTd}><code>url</code></td>
                   <td style={styles.paramTd}>Yes</td>
-                  <td style={styles.paramTd}>Subscription URL (multiple URLs separated by |)</td>
+                  <td style={styles.paramTd}>Subscription URL(s), multiple URLs separated by | (pipe)</td>
                 </tr>
                 <tr>
                   <td style={styles.paramTd}><code>target</code></td>
@@ -333,6 +339,19 @@ const styles: { [key: string]: React.CSSProperties } = {
     outline: 'none',
     transition: 'border-color 0.2s',
     boxSizing: 'border-box',
+  },
+  textarea: {
+    width: '100%',
+    padding: '0.75rem 1rem',
+    fontSize: '1rem',
+    border: '2px solid #e0e0e0',
+    borderRadius: '8px',
+    outline: 'none',
+    transition: 'border-color 0.2s',
+    boxSizing: 'border-box',
+    resize: 'vertical',
+    fontFamily: 'inherit',
+    lineHeight: '1.5',
   },
   select: {
     width: '100%',

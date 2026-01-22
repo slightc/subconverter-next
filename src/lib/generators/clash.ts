@@ -454,6 +454,9 @@ function ensureUniqueName(name: string, existing: Set<string>): string {
   // Replace '=' with '-' to avoid parse errors
   let safeName = name.replace(/=/g, '-');
   
+  // Replace unsupported emoji flags (🇹🇼 doesn't display properly on some devices)
+  safeName = safeName.replace(/🇹🇼/g, '🇨🇳');
+  
   if (!existing.has(safeName)) {
     return safeName;
   }

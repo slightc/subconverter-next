@@ -5,6 +5,7 @@
 import { Proxy, ProxyType } from '../types/proxy';
 import { ClashBaseConfig, DEFAULT_CLASH_BASE } from '../types/config';
 import { ClashProxyGroup, formatProxyGroupsForClash } from './proxygroup';
+import { sanitizeProxyName } from '../utils/string';
 import YAML from 'yaml';
 
 export interface ClashGeneratorOptions {
@@ -451,11 +452,7 @@ function getTypeName(type: ProxyType): string {
 }
 
 function ensureUniqueName(name: string, existing: Set<string>): string {
-  // Replace '=' with '-' to avoid parse errors
-  let safeName = name.replace(/=/g, '-');
-  
-  // Replace unsupported emoji flags (🇹🇼 doesn't display properly on some devices)
-  safeName = safeName.replace(/🇹🇼/g, '🇨🇳');
+  const safeName = sanitizeProxyName(name);
   
   if (!existing.has(safeName)) {
     return safeName;

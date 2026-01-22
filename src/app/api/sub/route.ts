@@ -36,6 +36,7 @@ export async function GET(request: NextRequest) {
 
   // Validate required parameters
   if (!url) {
+    console.error('Missing required parameter: url');
     return NextResponse.json(
       { error: 'Missing required parameter: url' },
       { status: 400 }
@@ -43,6 +44,7 @@ export async function GET(request: NextRequest) {
   }
 
   if (!target) {
+    console.error('Missing required parameter: target');
     return NextResponse.json(
       { error: 'Missing required parameter: target' },
       { status: 400 }
@@ -50,6 +52,7 @@ export async function GET(request: NextRequest) {
   }
 
   if (!SUPPORTED_TARGETS.includes(target)) {
+    console.error(`Invalid target: ${target}. Supported targets: ${SUPPORTED_TARGETS.join(', ')}`);
     return NextResponse.json(
       { error: `Invalid target: ${target}. Supported targets: ${SUPPORTED_TARGETS.join(', ')}` },
       { status: 400 }
@@ -70,13 +73,14 @@ export async function GET(request: NextRequest) {
     // Decode URL if needed
     const decodedUrl = urlDecode(url);
     
-    // Fetch subscription content
+    // Fetch subscription content with longer timeout
     const content = await fetchSubscription(decodedUrl, {
-      timeout: 15000,
+      timeout: 30000,
       userAgent: request.headers.get('user-agent') || 'subconverter-next/0.1.0',
     });
 
     if (!content) {
+      console.error('Subscription fetch returned empty content for URL:', decodedUrl);
       return NextResponse.json(
         { error: 'Failed to fetch subscription content' },
         { status: 400 }
@@ -87,6 +91,7 @@ export async function GET(request: NextRequest) {
     let nodes = parseSubscription(content);
 
     if (nodes.length === 0) {
+      console.error('No valid nodes found in subscription');
       return NextResponse.json(
         { error: 'No valid nodes found in subscription' },
         { status: 400 }
@@ -97,6 +102,7 @@ export async function GET(request: NextRequest) {
     nodes = filterNodes(nodes, { include, exclude });
 
     if (nodes.length === 0) {
+      console.error('No nodes remaining after filtering');
       return NextResponse.json(
         { error: 'No nodes remaining after filtering' },
         { status: 400 }
@@ -174,12 +180,12 @@ async function generateWithConfig(
   // Clear ruleset cache for fresh fetch
   clearRulesetCache();
 
-  // Fetch and parse config
+  // Fetch and parse config with longer timeout
   const decodedConfigUrl = urlDecode(configUrl);
-  const configContent = await fetchText(decodedConfigUrl, { timeout: 10000 });
+  const configContent = await fetchText(decodedConfigUrl, { timeout: 30000 });
   
   if (!configContent) {
-    throw new Error('Failed to fetch config file');
+    throw new Error(`Failed to fetch config file from: ${decodedConfigUrl}`);
   }
 
   const parsedConfig = parseConfig(configContent);

@@ -172,3 +172,15 @@ export function isIPAddress(str: string): boolean {
 export function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
+
+/**
+ * Sanitize proxy name for safe output
+ * - Replace '=' with '-' to avoid YAML parse errors
+ * - Replace unsupported emoji flags
+ */
+export function sanitizeProxyName(name: string): string {
+  let safeName = name.replace(/=/g, '-');
+  // Replace unsupported emoji flags (🇹🇼 doesn't display properly on some devices)
+  safeName = safeName.replace(/🇹🇼/g, '🇨🇳');
+  return safeName;
+}

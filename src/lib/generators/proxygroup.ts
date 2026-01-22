@@ -5,6 +5,7 @@
 
 import { Proxy } from '../types/proxy';
 import { ProxyGroupConfig } from '../types/config';
+import { sanitizeProxyName } from '../utils/string';
 
 /**
  * Generated proxy group for Clash
@@ -31,7 +32,7 @@ export function generateProxyGroups(
   configs: ProxyGroupConfig[],
   proxies: Proxy[]
 ): ClashProxyGroup[] {
-  const proxyNames = proxies.map(p => p.remark);
+  const proxyNames = proxies.map(p => sanitizeProxyName(p.remark));
   const generatedGroups: ClashProxyGroup[] = [];
   const groupNames = new Set<string>();
 
@@ -174,7 +175,7 @@ function isRegexPattern(str: string): boolean {
  * Generate default proxy groups if no config provided
  */
 export function generateDefaultProxyGroups(proxies: Proxy[]): ClashProxyGroup[] {
-  const proxyNames = proxies.map(p => p.remark);
+  const proxyNames = proxies.map(p => sanitizeProxyName(p.remark));
 
   if (proxyNames.length === 0) {
     return [];

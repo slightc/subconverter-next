@@ -66,7 +66,7 @@ export default function Home() {
     <main style={styles.main}>
       <div style={styles.container}>
         <header style={styles.header}>
-          <h1 style={styles.title}>Subconverter</h1>
+          <h1 style={styles.title}>Subconverter Next</h1>
           <p style={styles.subtitle}>Subscription Converter Service</p>
         </header>
 

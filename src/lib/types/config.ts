@@ -55,7 +55,7 @@ export interface ProxyGroupConfig {
 export interface ClashBaseConfig {
   'mixed-port'?: number;
   'allow-lan'?: boolean;
-  mode?: 'rule' | 'global' | 'direct';
+  mode?: 'Rule' | 'Global' | 'Direct';
   'log-level'?: 'info' | 'warning' | 'error' | 'debug' | 'silent';
   'external-controller'?: string;
   secret?: string;
@@ -98,7 +98,7 @@ export interface ParsedConfig {
 export const DEFAULT_CLASH_BASE: ClashBaseConfig = {
   'mixed-port': 7890,
   'allow-lan': true,
-  mode: 'rule',
+  mode: 'Rule',
   'log-level': 'info',
   'external-controller': ':9090',
 };

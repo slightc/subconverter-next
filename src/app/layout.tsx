@@ -1,6 +1,6 @@
 export const metadata = {
   title: '在线订阅转换器 一键私有部署',
-  description: '支持vercel一键部署/Serverless部署, 无需docker, 支持SS、SSR、VMess、Trojan、Hysteria2协议, 支持Clash、ClashR、Mixed (Base64)格式, 支持远程配置, 支持规则生成, 支持规则加载, 支持Web UI, 自建订阅转换',
+  description: '支持vercel一键部署/Serverless部署, 无需docker, 支持SS、SSR、VMess、Trojan、Hysteria2协议, 支持Clash、ClashR、Mixed (Base64)格式, 支持远程配置, 支持规则生成, 支持规则加载, 支持Web UI, 自建订阅转换, 订阅转换搭建',
 };
 
 export default function RootLayout({

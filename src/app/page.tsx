@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 // Predefined config options
 const CONFIG_PRESETS = [
@@ -28,6 +28,31 @@ export default function Home() {
   const [generatedUrl, setGeneratedUrl] = useState('');
   const [copied, setCopied] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [sharedConfigUrl, setSharedConfigUrl] = useState('');
+  const [copiedConfig, setCopiedConfig] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const paramTarget = params.get('target');
+    const paramConfig = params.get('config');
+    const paramInclude = params.get('include');
+    const paramExclude = params.get('exclude');
+    const paramFilename = params.get('filename');
+    if (paramTarget) setTarget(paramTarget);
+    if (paramInclude) { setInclude(paramInclude); setShowAdvanced(true); }
+    if (paramExclude) { setExclude(paramExclude); setShowAdvanced(true); }
+    if (paramFilename) { setFilename(paramFilename); setShowAdvanced(true); }
+    if (paramConfig) {
+      const preset = CONFIG_PRESETS.find(p => p.value === paramConfig);
+      if (preset && preset.value !== 'custom') {
+        setConfigPreset(preset.value);
+      } else {
+        setConfigPreset('custom');
+        setCustomConfig(paramConfig);
+      }
+    }
+  }, []);
 
   const generateUrl = useCallback(() => {
     if (!subscriptionUrl) {
@@ -67,6 +92,28 @@ export default function Home() {
       setTimeout(() => setCopied(false), 2000);
     }
   }, [generatedUrl]);
+
+  const shareConfig = useCallback(() => {
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin + window.location.pathname : '';
+    const params = new URLSearchParams();
+    params.set('target', target);
+    const configUrl = configPreset === 'custom' ? customConfig : configPreset;
+    if (configUrl) params.set('config', configUrl);
+    if (include) params.set('include', include);
+    if (exclude) params.set('exclude', exclude);
+    if (filename) params.set('filename', filename);
+    const qs = params.toString();
+    setSharedConfigUrl(qs ? `${baseUrl}?${qs}` : baseUrl);
+    setCopiedConfig(false);
+  }, [target, configPreset, customConfig, include, exclude, filename]);
+
+  const copyConfigUrl = useCallback(async () => {
+    if (sharedConfigUrl) {
+      await navigator.clipboard.writeText(sharedConfigUrl);
+      setCopiedConfig(true);
+      setTimeout(() => setCopiedConfig(false), 2000);
+    }
+  }, [sharedConfigUrl]);
 
   return (
     <main style={styles.main}>
@@ -184,9 +231,33 @@ export default function Home() {
           )}
 
           {/* Generate Button */}
-          <button onClick={generateUrl} style={styles.generateButton}>
-            Generate Link
-          </button>
+          <div style={styles.buttonRow}>
+            <button type="button" onClick={generateUrl} style={styles.generateButton}>
+              Generate Link
+            </button>
+            <button type="button" onClick={shareConfig} style={styles.shareConfigButton}>
+              Share Config
+            </button>
+          </div>
+
+          {/* Shared Config URL */}
+          {sharedConfigUrl && (
+            <div style={styles.resultSection}>
+              <label htmlFor="shared-config-url" style={styles.label}>Share Config URL (no subscription URL)</label>
+              <div style={styles.resultContainer}>
+                <input
+                  id="shared-config-url"
+                  type="text"
+                  value={sharedConfigUrl}
+                  readOnly
+                  style={styles.resultInput}
+                />
+                <button type="button" onClick={copyConfigUrl} style={styles.copyButton}>
+                  {copiedConfig ? '✓ Copied' : 'Copy'}
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Generated URL */}
           {generatedUrl && (
@@ -379,8 +450,12 @@ const styles: { [key: string]: React.CSSProperties } = {
     borderRadius: '8px',
     marginBottom: '1rem',
   },
+  buttonRow: {
+    display: 'flex',
+    gap: '0.75rem',
+  },
   generateButton: {
-    width: '100%',
+    flex: 1,
     padding: '1rem',
     fontSize: '1.1rem',
     fontWeight: '600',
@@ -390,6 +465,17 @@ const styles: { [key: string]: React.CSSProperties } = {
     borderRadius: '8px',
     cursor: 'pointer',
     transition: 'transform 0.2s, box-shadow 0.2s',
+  },
+  shareConfigButton: {
+    padding: '1rem 1.25rem',
+    fontSize: '1rem',
+    fontWeight: '600',
+    color: '#667eea',
+    background: 'white',
+    border: '2px solid #667eea',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
   },
   resultSection: {
     marginTop: '1.5rem',

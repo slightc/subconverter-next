@@ -1,6 +1,30 @@
-export const metadata = {
-  title: '在线订阅转换器 一键私有部署',
-  description: '支持vercel一键部署/Serverless部署, 无需docker, 支持SS、SSR、VMess、Trojan、Hysteria2协议, 支持Clash、ClashR、Mixed (Base64)格式, 支持远程配置, 支持规则生成, 支持规则加载, 支持Web UI, 自建订阅转换, 订阅转换搭建',
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: '在线订阅转换器 | Subconverter Next - 一键Vercel私有部署',
+  description: '免费在线订阅转换工具，支持SS/SSR/VMess/Trojan/Hysteria2协议，转换为Clash/ClashR/Base64格式。支持Vercel一键部署，无需Docker，提供Web UI界面，自建订阅转换服务。',
+  keywords: ['订阅转换', '订阅转换器', 'subconverter', 'Clash订阅', 'VMess转Clash', 'Trojan转Clash', 'SS订阅转换', 'Hysteria2', '在线订阅转换', 'Vercel部署', '代理订阅', '机场订阅转换', 'ClashR', 'subconverter-next'],
+  authors: [{ name: 'Subconverter Next', url: 'https://github.com/slightc/subconverter-next' }],
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+    },
+  },
+  openGraph: {
+    type: 'website',
+    locale: 'zh_CN',
+    title: '在线订阅转换器 | Subconverter Next - 一键Vercel私有部署',
+    description: '免费在线订阅转换工具，支持SS/SSR/VMess/Trojan/Hysteria2协议，转换为Clash/ClashR格式。支持Vercel一键部署，无需Docker，自建订阅转换服务。',
+    siteName: 'Subconverter Next',
+  },
+  twitter: {
+    card: 'summary',
+    title: '在线订阅转换器 | Subconverter Next',
+    description: '免费在线订阅转换工具，支持SS/SSR/VMess/Trojan/Hysteria2协议，转换为Clash/ClashR格式，支持Vercel一键部署。',
+  },
 };
 
 export default function RootLayout({
@@ -9,7 +33,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="zh-CN">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>

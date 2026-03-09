@@ -228,10 +228,11 @@ function buildSSProxy(
     switch (node.plugin) {
       case 'simple-obfs':
       case 'obfs-local':
+      case 'obfs':
         proxy.plugin = 'obfs';
         proxy['plugin-opts'] = {
-          mode: pluginOpts.obfs || 'http',
-          host: pluginOpts['obfs-host'] || '',
+          mode: pluginOpts.obfs || pluginOpts.mode || 'http',
+          host: pluginOpts['obfs-host'] || pluginOpts.host || '',
         };
         break;
       case 'v2ray-plugin':

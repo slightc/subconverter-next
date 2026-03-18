@@ -56,11 +56,12 @@ export async function fetchText(
 /**
  * Fetch subscription content from URL
  * Handles multiple URLs separated by |
+ * Returns an array of content strings, one per URL
  */
 export async function fetchSubscription(
   urls: string | string[],
   options: FetchOptions = {}
-): Promise<string> {
+): Promise<string[]> {
   const urlList = Array.isArray(urls) 
     ? urls 
     : urls.split('|').map(u => u.trim()).filter(Boolean);
@@ -79,7 +80,7 @@ export async function fetchSubscription(
     }
   }
   
-  return results.join('\n');
+  return results;
 }
 
 /**

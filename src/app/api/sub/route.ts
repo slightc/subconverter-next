@@ -74,12 +74,12 @@ export async function GET(request: NextRequest) {
     const decodedUrl = urlDecode(url);
     
     // Fetch subscription content with longer timeout
-    const content = await fetchSubscription(decodedUrl, {
+    const contents = await fetchSubscription(decodedUrl, {
       timeout: 30000,
       userAgent: request.headers.get('user-agent') || 'subconverter-next/0.1.0',
     });
 
-    if (!content) {
+    if (contents.length === 0) {
       console.error('Subscription fetch returned empty content for URL:', decodedUrl);
       return NextResponse.json(
         { error: 'Failed to fetch subscription content' },
@@ -87,8 +87,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Parse nodes from subscription
-    let nodes = parseSubscription(content);
+    // Parse nodes from each subscription content
+    let nodes: Proxy[] = [];
+    for (const content of contents) {
+      const parsed = parseSubscription(content);
+      nodes.push(...parsed);
+    }
 
     if (nodes.length === 0) {
       console.error('No valid nodes found in subscription');

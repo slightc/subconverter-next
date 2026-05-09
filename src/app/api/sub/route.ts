@@ -30,6 +30,16 @@ const SUPPORTED_TARGETS = ['clash', 'clashr', 'mixed'];
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
 
+  // [DEBUG] Observe how the URL/query is presented across runtimes
+  // (Node dev vs Cloudflare Workers). Remove after diagnosis.
+  const allEntries: Record<string, string> = {};
+  for (const [k, v] of searchParams.entries()) allEntries[k] = v;
+  console.log('[sub.GET] request.url:', request.url);
+  console.log('[sub.GET] nextUrl.search:', request.nextUrl.search);
+  console.log('[sub.GET] searchParams.entries:', JSON.stringify(allEntries));
+  console.log('[sub.GET] searchParams.get(url):', searchParams.get('url'));
+  console.log('[sub.GET] searchParams.get(config):', searchParams.get('config'));
+
   // Get required parameters
   const url = searchParams.get('url');
   const target = searchParams.get('target');

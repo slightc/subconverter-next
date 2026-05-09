@@ -72,6 +72,7 @@ export async function GET(request: NextRequest) {
   try {
     // Decode URL if needed
     const decodedUrl = urlDecode(url);
+    console.log(`fetch url: url (${url})  decodedUrl (${decodedUrl})`)
     
     // Fetch subscription content with longer timeout
     const contents = await fetchSubscription(decodedUrl, {

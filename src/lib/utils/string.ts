@@ -77,6 +77,50 @@ export function parseQueryString(query: string): Record<string, string> {
 }
 
 /**
+ * Extract a parameter value from a raw query string while tolerating
+ * unencoded `&` characters inside the value.
+ *
+ * Standard URL parsers split on `&`, which loses everything after the
+ * first unencoded `&` when a URL containing query parameters is passed
+ * as a value (e.g. `?url=https://host/?a=1&b=2`). This walks the raw
+ * query and only treats `&<knownParam>=` as a value boundary.
+ */
+export function extractRawParam(
+  search: string,
+  paramName: string,
+  knownParams: readonly string[]
+): string | null {
+  if (!search) return null;
+  let query = search.startsWith('?') ? search.slice(1) : search;
+  // Strip fragment if present
+  const hashIdx = query.indexOf('#');
+  if (hashIdx !== -1) query = query.slice(0, hashIdx);
+  if (!query) return null;
+
+  const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const startRe = new RegExp(`(?:^|&)${escape(paramName)}=`);
+  const startMatch = startRe.exec(query);
+  if (!startMatch) return null;
+
+  const valueStart = startMatch.index + startMatch[0].length;
+  let valueEnd = query.length;
+  for (const other of knownParams) {
+    if (other === paramName) continue;
+    const re = new RegExp(`&${escape(other)}=`, 'g');
+    re.lastIndex = valueStart;
+    const m = re.exec(query);
+    if (m && m.index < valueEnd) valueEnd = m.index;
+  }
+
+  const raw = query.slice(valueStart, valueEnd);
+  try {
+    return decodeURIComponent(raw.replace(/\+/g, '%20'));
+  } catch {
+    return raw;
+  }
+}
+
+/**
  * Build query string from object
  */
 export function buildQueryString(params: Record<string, string | number | boolean | undefined>): string {

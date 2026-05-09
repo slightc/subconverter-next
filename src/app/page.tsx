@@ -2,6 +2,42 @@
 
 import { useState, useCallback, useEffect } from 'react';
 
+// Known top-level query parameters used by the page form. Used to
+// extract values from the raw query string while tolerating unencoded
+// `&` characters inside parameter values (e.g. when a `config` or
+// `url` value is itself a URL with query parameters).
+const KNOWN_PARAMS = ['url', 'target', 'config', 'include', 'exclude', 'filename'] as const;
+
+function extractRawParam(search: string, paramName: string): string | null {
+  if (!search) return null;
+  let query = search.startsWith('?') ? search.slice(1) : search;
+  const hashIdx = query.indexOf('#');
+  if (hashIdx !== -1) query = query.slice(0, hashIdx);
+  if (!query) return null;
+
+  const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const startRe = new RegExp(`(?:^|&)${escape(paramName)}=`);
+  const startMatch = startRe.exec(query);
+  if (!startMatch) return null;
+
+  const valueStart = startMatch.index + startMatch[0].length;
+  let valueEnd = query.length;
+  for (const other of KNOWN_PARAMS) {
+    if (other === paramName) continue;
+    const re = new RegExp(`&${escape(other)}=`, 'g');
+    re.lastIndex = valueStart;
+    const m = re.exec(query);
+    if (m && m.index < valueEnd) valueEnd = m.index;
+  }
+
+  const raw = query.slice(valueStart, valueEnd);
+  try {
+    return decodeURIComponent(raw.replace(/\+/g, '%20'));
+  } catch {
+    return raw;
+  }
+}
+
 // Predefined config options
 const CONFIG_PRESETS = [
   { name: 'None', value: '' },
@@ -33,13 +69,15 @@ export default function Home() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-    const paramTarget = params.get('target');
-    const paramConfig = params.get('config');
-    const paramInclude = params.get('include');
-    const paramExclude = params.get('exclude');
-    const paramFilename = params.get('filename');
+    const search = window.location.search;
+    const paramTarget = extractRawParam(search, 'target');
+    const paramConfig = extractRawParam(search, 'config');
+    const paramInclude = extractRawParam(search, 'include');
+    const paramExclude = extractRawParam(search, 'exclude');
+    const paramFilename = extractRawParam(search, 'filename');
+    const paramUrl = extractRawParam(search, 'url');
     if (paramTarget) setTarget(paramTarget);
+    if (paramUrl) setSubscriptionUrl(paramUrl.split('|').join('\n'));
     if (paramInclude) { setInclude(paramInclude); setShowAdvanced(true); }
     if (paramExclude) { setExclude(paramExclude); setShowAdvanced(true); }
     if (paramFilename) { setFilename(paramFilename); setShowAdvanced(true); }

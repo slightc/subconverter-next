@@ -21,17 +21,28 @@ import { NextRequest, NextResponse } from 'next/server';
 import { parseSubscription, filterNodes, deduplicateNodes, parseConfig, loadAllRulesets, clearRulesetCache } from '@/lib/parsers';
 import { generate, generateFullClashConfig, generateProxyGroups, generateDefaultProxyGroups, getContentType, TargetFormat } from '@/lib/generators';
 import { fetchSubscription, fetchText } from '@/lib/utils/fetch';
-import { urlDecode } from '@/lib/utils/string';
+import { urlDecode, extractRawParam } from '@/lib/utils/string';
 import { Proxy } from '@/lib/types/proxy';
 
 // Supported target formats
 const SUPPORTED_TARGETS = ['clash', 'clashr', 'mixed'];
 
+// Known query parameters used by this endpoint. Used to safely extract
+// raw parameter values that may contain unencoded `&` characters
+// (e.g. when the `url` value is itself a URL with query parameters).
+const KNOWN_PARAMS = [
+  'url', 'target', 'config', 'include', 'exclude', 'filename',
+  'append_type', 'udp', 'tfo', 'scv', 'insert',
+] as const;
+
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
+  const rawSearch = request.nextUrl.search;
 
-  // Get required parameters
-  const url = searchParams.get('url');
+  // Get required parameters. Use a raw-query-aware extractor for `url`
+  // so that unencoded `&` characters inside the subscription URL are
+  // not lost (e.g. `?url=https://host/sub?a=1&b=2`).
+  const url = extractRawParam(rawSearch, 'url', KNOWN_PARAMS) ?? searchParams.get('url');
   const target = searchParams.get('target');
 
   // Validate required parameters
@@ -59,8 +70,9 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Get optional parameters
-  const configUrl = searchParams.get('config') || undefined;
+  // Get optional parameters. The config URL may also contain `&` query
+  // params, so use the raw-query-aware extractor for it as well.
+  const configUrl = extractRawParam(rawSearch, 'config', KNOWN_PARAMS) ?? searchParams.get('config') ?? undefined;
   const include = searchParams.get('include') || undefined;
   const exclude = searchParams.get('exclude') || undefined;
   const filename = searchParams.get('filename') || undefined;

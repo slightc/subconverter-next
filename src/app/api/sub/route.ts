@@ -21,7 +21,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { parseSubscription, filterNodes, deduplicateNodes, parseConfig, loadAllRulesets, clearRulesetCache } from '@/lib/parsers';
 import { generate, generateFullClashConfig, generateProxyGroups, generateDefaultProxyGroups, getContentType, TargetFormat } from '@/lib/generators';
 import { fetchSubscription, fetchText } from '@/lib/utils/fetch';
-import { urlDecode, extractRawParam } from '@/lib/utils/string';
+import { extractRawParam } from '@/lib/utils/string';
 import { Proxy } from '@/lib/types/proxy';
 
 // Supported target formats
@@ -82,17 +82,17 @@ export async function GET(request: NextRequest) {
   const scv = parseTriBool(searchParams.get('scv'));
 
   try {
-    // Decode URL if needed
-    const decodedUrl = urlDecode(url);
-    
-    // Fetch subscription content with longer timeout
-    const contents = await fetchSubscription(decodedUrl, {
+    // `url` is already percent-decoded once (by extractRawParam or
+    // URLSearchParams). Decoding again here would corrupt URLs that
+    // legitimately contain `%XX` sequences (e.g. passwords or paths
+    // with reserved characters), so use it as-is.
+    const contents = await fetchSubscription(url, {
       timeout: 30000,
       userAgent: request.headers.get('user-agent') || 'subconverter-next/0.1.0',
     });
 
     if (contents.length === 0) {
-      console.error('Subscription fetch returned empty content for URL:', decodedUrl);
+      console.error('Subscription fetch returned empty content for URL:', url);
       return NextResponse.json(
         { error: 'Failed to fetch subscription content' },
         { status: 400 }
@@ -196,19 +196,19 @@ async function generateWithConfig(
   // Clear ruleset cache for fresh fetch
   clearRulesetCache();
 
-  // Fetch and parse config with longer timeout
-  const decodedConfigUrl = urlDecode(configUrl);
-  const configContent = await fetchText(decodedConfigUrl, { timeout: 30000 });
-  
+  // configUrl is already percent-decoded once by the caller; don't
+  // decode again or `%XX` characters inside the URL would be corrupted.
+  const configContent = await fetchText(configUrl, { timeout: 30000 });
+
   if (!configContent) {
-    throw new Error(`Failed to fetch config file from: ${decodedConfigUrl}`);
+    throw new Error(`Failed to fetch config file from: ${configUrl}`);
   }
 
   const parsedConfig = parseConfig(configContent);
 
   // Generate proxy groups
   let proxyGroups = generateProxyGroups(parsedConfig.proxyGroups, nodes);
-  
+
   // If no proxy groups defined in config, use defaults
   if (proxyGroups.length === 0) {
     proxyGroups = generateDefaultProxyGroups(nodes);
@@ -217,7 +217,7 @@ async function generateWithConfig(
   // Load all rulesets
   let rules: string[] = [];
   if (parsedConfig.enableRuleGenerator && parsedConfig.rulesets.length > 0) {
-    rules = await loadAllRulesets(parsedConfig.rulesets, decodedConfigUrl);
+    rules = await loadAllRulesets(parsedConfig.rulesets, configUrl);
     
     // Ensure MATCH rule exists at the end
     if (!rules.some(r => r.startsWith('MATCH,'))) {

@@ -81,6 +81,42 @@ curl "http://localhost:3000/api/sub?target=clash&url=https://example.com/sub"
 curl "http://localhost:3000/api/sub?target=clash&url=https://example.com/sub&config=https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/config/ACL4SSR_Online.ini"
 ```
 
+#### 上传订阅文件
+
+```
+POST /api/upload
+```
+
+上传 Clash/YAML 配置文件，返回一个可公开访问的 URL，可作为 `/api/sub` 的 `url`
+参数使用。当你没有现成的订阅链接时非常方便。上传的文件通过 **Vercel Blob**
+存储（目前仅支持该存储后端）。
+
+**请求：** `multipart/form-data`，字段名为 `file`（也支持直接以 YAML 作为请求体）。
+
+**响应：**
+
+```json
+{
+  "url": "https://<store>.public.blob.vercel-storage.com/uploads/sub-xxxx.yaml",
+  "pathname": "uploads/sub-xxxx.yaml",
+  "size": 1234,
+  "provider": "vercel"
+}
+```
+
+**示例：**
+
+```bash
+curl -X POST -F "file=@config.yaml" http://localhost:3000/api/upload
+```
+
+**配置：** 为你的部署连接 [Vercel Blob](https://vercel.com/docs/storage/vercel-blob)
+存储。它会提供上传所需的 `BLOB_READ_WRITE_TOKEN` 环境变量。若未配置，该接口将返回
+`503`。
+
+在 Web UI 中，可使用订阅 URL 下方的 **Upload YAML File** 按钮直接上传文件，其 URL
+会自动追加到订阅列表中。
+
 #### 获取版本
 
 ```

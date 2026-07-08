@@ -30,6 +30,8 @@ export default function Home() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [sharedConfigUrl, setSharedConfigUrl] = useState('');
   const [copiedConfig, setCopiedConfig] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -85,6 +87,31 @@ export default function Home() {
     setCopied(false);
   }, [subscriptionUrl, target, configPreset, customConfig, include, exclude, filename]);
 
+  const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    // Reset the input so the same file can be selected again later.
+    e.target.value = '';
+    if (!file) return;
+
+    setUploading(true);
+    setUploadError('');
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/upload', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || `Upload failed (${res.status})`);
+      }
+      // Append the uploaded file URL to the subscription URL list.
+      setSubscriptionUrl((prev) => (prev.trim() ? `${prev.trim()}\n${data.url}` : data.url));
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  }, []);
+
   const copyToClipboard = useCallback(async () => {
     if (generatedUrl) {
       await navigator.clipboard.writeText(generatedUrl);
@@ -136,6 +163,22 @@ export default function Home() {
               style={styles.textarea}
               rows={4}
             />
+            <div style={styles.uploadRow}>
+              <label style={uploading ? styles.uploadButtonDisabled : styles.uploadButton}>
+                {uploading ? 'Uploading...' : '⬆ Upload YAML File'}
+                <input
+                  type="file"
+                  accept=".yaml,.yml,.txt,text/yaml,application/yaml,text/plain"
+                  onChange={handleFileUpload}
+                  disabled={uploading}
+                  style={{ display: 'none' }}
+                />
+              </label>
+              <span style={styles.uploadHint}>
+                Upload a Clash/YAML config; its URL is added above (Vercel Blob storage)
+              </span>
+            </div>
+            {uploadError && <div style={styles.uploadError}>{uploadError}</div>}
           </div>
 
           {/* Target Format */}
@@ -336,6 +379,13 @@ export default function Home() {
               </tbody>
             </table>
 
+            <h3 style={styles.apiEndpoint}>POST /api/upload</h3>
+            <p style={styles.apiDesc}>
+              Upload a Clash/YAML config file (multipart field <code>file</code>) and
+              receive a public URL usable as the <code>url</code> parameter above.
+              Stored via Vercel Blob.
+            </p>
+
             <h3 style={styles.apiEndpoint}>GET /api/version</h3>
             <p style={styles.apiDesc}>Get version information</p>
           </div>
@@ -434,6 +484,46 @@ const styles: { [key: string]: React.CSSProperties } = {
     background: 'white',
     cursor: 'pointer',
     boxSizing: 'border-box',
+  },
+  uploadRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem',
+    marginTop: '0.5rem',
+    flexWrap: 'wrap',
+  },
+  uploadButton: {
+    display: 'inline-block',
+    padding: '0.5rem 1rem',
+    fontSize: '0.85rem',
+    fontWeight: '600',
+    color: '#667eea',
+    background: 'white',
+    border: '2px solid #667eea',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+  },
+  uploadButtonDisabled: {
+    display: 'inline-block',
+    padding: '0.5rem 1rem',
+    fontSize: '0.85rem',
+    fontWeight: '600',
+    color: '#999',
+    background: '#f0f0f0',
+    border: '2px solid #ccc',
+    borderRadius: '6px',
+    cursor: 'not-allowed',
+    whiteSpace: 'nowrap',
+  },
+  uploadHint: {
+    fontSize: '0.8rem',
+    color: '#888',
+  },
+  uploadError: {
+    marginTop: '0.5rem',
+    fontSize: '0.85rem',
+    color: '#dc3545',
   },
   toggleButton: {
     background: 'none',

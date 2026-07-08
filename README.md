@@ -81,6 +81,44 @@ curl "http://localhost:3000/api/sub?target=clash&url=https://example.com/sub"
 curl "http://localhost:3000/api/sub?target=clash&url=https://example.com/sub&config=https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/config/ACL4SSR_Online.ini"
 ```
 
+#### Upload Subscription File
+
+```
+POST /api/upload
+```
+
+Upload a Clash/YAML config file and receive a public URL that can be used as the
+`url` parameter of `/api/sub`. This is handy when you don't have a hosted
+subscription link. Uploaded files are stored via **Vercel Blob** (currently the
+only supported storage backend).
+
+**Request:** `multipart/form-data` with a `file` field (or a raw YAML request body).
+
+**Response:**
+
+```json
+{
+  "url": "https://<store>.public.blob.vercel-storage.com/uploads/sub-xxxx.yaml",
+  "pathname": "uploads/sub-xxxx.yaml",
+  "size": 1234,
+  "provider": "vercel"
+}
+```
+
+**Example:**
+
+```bash
+curl -X POST -F "file=@config.yaml" http://localhost:3000/api/upload
+```
+
+**Configuration:** Connect a [Vercel Blob](https://vercel.com/docs/storage/vercel-blob)
+store to your deployment. This provides the `BLOB_READ_WRITE_TOKEN` environment
+variable required for uploads. Without it, the endpoint returns `503`.
+
+In the Web UI, use the **Upload YAML File** button under the subscription URL
+field to upload a file directly; its URL is appended to the subscription list
+automatically.
+
 #### Get Version
 
 ```

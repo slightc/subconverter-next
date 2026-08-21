@@ -190,12 +190,14 @@ curl -b jar.txt -X POST http://localhost:3000/api/links/home/token
 
 | 变量 | 必填 | 说明 |
 |------|------|------|
-| `BLOB_READ_WRITE_TOKEN` | 是 | 连接 [Vercel Blob](https://vercel.com/docs/storage/vercel-blob) 存储后自动提供；账号与短链接以 **private** blob 形式存放。未配置时账号相关接口返回 `503`。 |
-| `AUTH_SECRET` | 建议 | 用于签名会话 Cookie，默认回退到 Blob token；修改后所有人需要重新登录。 |
+| `BLOB_READ_WRITE_TOKEN` | 是 | 连接 [Vercel Blob](https://vercel.com/docs/storage/vercel-blob) 存储后自动提供，账号与短链接都存在其中。未配置时账号相关接口返回 `503`。 |
+| `AUTH_SECRET` | 建议 | 用于签名会话 Cookie **并派生存储路径**，默认回退到 Blob token。请在创建账号前设置好并保持不变：修改后所有人需要重新登录，且已有的账号与短链接将无法读取。 |
 | `REGISTER_CODE` | 否 | 设置后注册需要填写该邀请码。 |
 | `DISABLE_REGISTER` | 否 | 设为 `true` 关闭注册。 |
 
-密码使用 scrypt 加盐哈希存储，订阅 token 为 128 位随机值并使用常数时间比较。
+密码使用 scrypt 加盐哈希存储，订阅 token 为 128 位随机值并使用常数时间比较。每条记录
+存放在由 `AUTH_SECRET` 经 HMAC-SHA256 派生出的不可猜测路径下，而列出 Blob 存储内容本身
+需要该存储的读写 token。
 
 ## 远程配置
 

@@ -196,13 +196,15 @@ curl -b jar.txt -X POST http://localhost:3000/api/links/home/token
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `BLOB_READ_WRITE_TOKEN` | Yes | Provided by a connected [Vercel Blob](https://vercel.com/docs/storage/vercel-blob) store; accounts and links are stored there as **private** blobs. Without it the account endpoints return `503`. |
-| `AUTH_SECRET` | Recommended | Secret used to sign session cookies. Defaults to the Blob token; changing it signs everyone out. |
+| `BLOB_READ_WRITE_TOKEN` | Yes | Provided by a connected [Vercel Blob](https://vercel.com/docs/storage/vercel-blob) store; accounts and links are stored there. Without it the account endpoints return `503`. |
+| `AUTH_SECRET` | Recommended | Signs session cookies **and derives the storage pathnames**. Defaults to the Blob token. Set it once before creating accounts: changing it later signs everyone out and makes existing accounts and links unreachable. |
 | `REGISTER_CODE` | No | When set, registration requires this invite code. |
 | `DISABLE_REGISTER` | No | Set to `true` to close registration. |
 
 Passwords are stored as scrypt hashes and subscription tokens are 128-bit random
-values compared in constant time.
+values compared in constant time. Each record lives at an unguessable blob
+pathname derived with HMAC-SHA256 from `AUTH_SECRET`, and listing a Blob store
+requires its read-write token.
 
 ## Remote Config
 

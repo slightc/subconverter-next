@@ -200,6 +200,15 @@ curl -b jar.txt -X POST http://localhost:3000/api/links/home/token
 | `AUTH_SECRET` | Recommended | Signs session cookies **and derives the storage pathnames**. Defaults to the Blob token. Set it once before creating accounts: changing it later signs everyone out and makes existing accounts and links unreachable. |
 | `REGISTER_CODE` | No | When set, registration requires this invite code. |
 | `DISABLE_REGISTER` | No | Set to `true` to close registration. |
+| `DATA_BLOB_READ_WRITE_TOKEN` | No | Token of a separate Blob store for account data. Defaults to `BLOB_READ_WRITE_TOKEN`, i.e. the same store used for uploads. |
+| `DATA_BLOB_ACCESS` | No | `private` stores account records as private blobs, readable only with the store token. Default `public`. |
+
+**About `DATA_BLOB_ACCESS=private`:** private blobs are not available on every
+Blob store — one that does not support them answers reads with
+`400 Bad Request`, which surfaces as *"Registration failed: Vercel Blob: Failed
+to fetch blob: 400 Bad Request"*. Keep the default there. On a store that does
+support them, turning it on is a free upgrade: records stop being reachable by
+URL at all, and each read costs one authenticated request instead of two.
 
 Passwords are stored as scrypt hashes and subscription tokens are 128-bit random
 values compared in constant time. Each record lives at an unguessable blob

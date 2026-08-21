@@ -13,9 +13,29 @@
  * backend (Redis/KV/D1/...) later without touching the API routes.
  */
 
-import { put, head, del, BlobNotFoundError } from '@vercel/blob';
+import { put, get, head, del, BlobNotFoundError } from '@vercel/blob';
 import { createHmac, randomBytes } from 'crypto';
 import { getAuthSecret } from '@/lib/auth/crypto';
+
+/**
+ * Token of the store holding account data. Set DATA_BLOB_READ_WRITE_TOKEN to
+ * keep accounts in a store of their own, separate from uploaded files.
+ */
+function dataToken(): string | undefined {
+  return process.env.DATA_BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN;
+}
+
+/**
+ * Blob access mode for account records.
+ *
+ * Private blobs are only readable with the store's token, but they are not
+ * available on every store — a store that does not support them answers
+ * reads with "400 Bad Request". Public (the default) works everywhere and
+ * relies on the secret pathname below.
+ */
+function dataAccess(): 'public' | 'private' {
+  return process.env.DATA_BLOB_ACCESS === 'private' ? 'private' : 'public';
+}
 
 export interface KVStore {
   /** Human readable provider identifier (e.g. "vercel-blob") */
@@ -37,14 +57,16 @@ export interface KVStore {
 /**
  * Vercel Blob backed KV store.
  *
- * Public blobs are used because private blobs are not available on every
- * store; the secret pathname is what keeps records unreachable.
+ * Public blobs are the default because private blobs are not available on
+ * every store; there the secret pathname is what keeps records unreachable.
+ * Set DATA_BLOB_ACCESS=private on a store that supports private blobs to also
+ * put the store token in front of every read.
  */
 export class VercelBlobKV implements KVStore {
   readonly name = 'vercel-blob';
 
   isConfigured(): boolean {
-    return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+    return Boolean(dataToken());
   }
 
   private pathname(key: string): string {
@@ -56,7 +78,7 @@ export class VercelBlobKV implements KVStore {
     if (!this.isConfigured()) {
       throw new Error(
         'Storage is not configured. Connect a Vercel Blob store and set the ' +
-          'BLOB_READ_WRITE_TOKEN environment variable.'
+          'BLOB_READ_WRITE_TOKEN (or DATA_BLOB_READ_WRITE_TOKEN) environment variable.'
       );
     }
   }
@@ -64,11 +86,44 @@ export class VercelBlobKV implements KVStore {
   async read<T>(key: string): Promise<T | null> {
     this.assertConfigured();
 
+    const text =
+      dataAccess() === 'private'
+        ? await this.readPrivate(key)
+        : await this.readPublic(key);
+
+    if (text === null || !text.trim()) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      throw new Error(`Corrupted record for key: ${key}`);
+    }
+  }
+
+  /** Read through the authenticated blob API — one round trip, never cached */
+  private async readPrivate(key: string): Promise<string | null> {
+    const result = await get(this.pathname(key), {
+      access: 'private',
+      useCache: false,
+      token: dataToken(),
+    });
+
+    if (!result || result.statusCode !== 200) {
+      return null;
+    }
+
+    return new Response(result.stream).text();
+  }
+
+  /** Read a public blob, bypassing the CDN so writes are visible at once */
+  private async readPublic(key: string): Promise<string | null> {
     // head() is an authenticated API call, so it always reflects the latest
     // write — unlike the CDN in front of the blob URL itself.
     let url: string;
     try {
-      const meta = await head(this.pathname(key));
+      const meta = await head(this.pathname(key), { token: dataToken() });
       url = meta.url;
     } catch (error) {
       if (error instanceof BlobNotFoundError) return null;
@@ -89,26 +144,18 @@ export class VercelBlobKV implements KVStore {
       throw new Error(`Failed to read record: HTTP ${response.status}`);
     }
 
-    const text = await response.text();
-    if (!text.trim()) {
-      return null;
-    }
-
-    try {
-      return JSON.parse(text) as T;
-    } catch {
-      throw new Error(`Corrupted record for key: ${key}`);
-    }
+    return response.text();
   }
 
   async write<T>(key: string, value: T): Promise<void> {
     this.assertConfigured();
 
     await put(this.pathname(key), JSON.stringify(value), {
-      access: 'public',
+      access: dataAccess(),
       addRandomSuffix: false,
       allowOverwrite: true,
       contentType: 'application/json',
+      token: dataToken(),
       // Minimum accepted by Vercel Blob; reads bypass the cache anyway.
       cacheControlMaxAge: 60,
     });
@@ -118,7 +165,7 @@ export class VercelBlobKV implements KVStore {
     this.assertConfigured();
 
     try {
-      await del(this.pathname(key));
+      await del(this.pathname(key), { token: dataToken() });
     } catch (error) {
       // Deleting a missing record is not an error.
       if (error instanceof BlobNotFoundError) return;

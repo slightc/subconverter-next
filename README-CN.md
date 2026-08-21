@@ -194,6 +194,13 @@ curl -b jar.txt -X POST http://localhost:3000/api/links/home/token
 | `AUTH_SECRET` | 建议 | 用于签名会话 Cookie **并派生存储路径**，默认回退到 Blob token。请在创建账号前设置好并保持不变：修改后所有人需要重新登录，且已有的账号与短链接将无法读取。 |
 | `REGISTER_CODE` | 否 | 设置后注册需要填写该邀请码。 |
 | `DISABLE_REGISTER` | 否 | 设为 `true` 关闭注册。 |
+| `DATA_BLOB_READ_WRITE_TOKEN` | 否 | 单独存放账号数据的 Blob store token，默认与上传共用 `BLOB_READ_WRITE_TOKEN`。 |
+| `DATA_BLOB_ACCESS` | 否 | 设为 `private` 时账号记录以 private blob 存放，只有持有该 store 的 token 才能读取；默认 `public`。 |
+
+**关于 `DATA_BLOB_ACCESS=private`：** 并非所有 Blob store 都支持 private blob，不支持的
+store 读取时会返回 `400 Bad Request`，页面上表现为 *"Registration failed: Vercel Blob:
+Failed to fetch blob: 400 Bad Request"*。这种情况保持默认即可。如果你的 store 支持，打开
+它只有好处：记录彻底无法通过 URL 访问，且每次读取从两次请求减少为一次带鉴权的请求。
 
 密码使用 scrypt 加盐哈希存储，订阅 token 为 128 位随机值并使用常数时间比较。每条记录
 存放在由 `AUTH_SECRET` 经 HMAC-SHA256 派生出的不可猜测路径下，而列出 Blob 存储内容本身

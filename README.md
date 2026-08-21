@@ -12,6 +12,8 @@ A subscription converter service built with Next.js, ported from the original C+
 - **Proxy Groups**: Auto-generate proxy groups based on config
 - **Rules**: Load and parse rulesets from remote URLs
 - **Web UI**: User-friendly interface for generating conversion links
+- **Accounts & Short Links**: Sign in, claim a short fixed ID and serve it as
+  `/api/s/<id>?token=...` with a rotatable token
 - **Serverless Ready**: Designed for Vercel/Serverless deployment
 
 ## Quick Start
@@ -125,6 +127,94 @@ automatically.
 GET /api/version
 ```
 
+## Accounts & Short Subscription Links
+
+Instead of handing your client a long `/api/sub?...` URL, sign in and claim a
+short, fixed ID. The ID always stays the same — you can change what it points
+to at any time, and rotate its token when a URL leaks.
+
+```
+GET /api/s/<id>?token=xxxxx
+```
+
+### Web UI
+
+Open `/account` (**My Subscriptions** in the header):
+
+1. Create an account (username + password) or sign in
+2. Enter a short **ID** (3-32 characters, `a-z 0-9 - _`)
+3. Paste the **mapped link** — it must be one of this service's own `/api/sub`
+   links; generate it on the home page and press **Save as Short Link**
+4. Copy the resulting `/api/s/<id>?token=...` URL into your client
+
+From the same page you can edit the mapping, rotate the token (the old URL stops
+working immediately) or delete the short link.
+
+### API
+
+All endpoints below use JSON and a `sc_session` cookie for authentication.
+
+| Endpoint | Description |
+|----------|-------------|
+| `POST /api/auth/register` | `{ username, password, code? }` — create an account and sign in |
+| `POST /api/auth/login` | `{ username, password }` — sign in |
+| `POST /api/auth/logout` | Sign out |
+| `GET /api/auth/me` | Current session and server settings |
+| `GET /api/links` | List your short links |
+| `POST /api/links` | `{ id, link, name? }` — create a short link |
+| `PATCH /api/links/<id>` | `{ link?, name? }` — update the mapping |
+| `POST /api/links/<id>/token` | Rotate the token |
+| `DELETE /api/links/<id>` | Delete the short link |
+| `GET /api/s/<id>?token=…` | The subscription itself |
+
+**Example:**
+
+```bash
+# Sign in
+curl -c jar.txt -X POST http://localhost:3000/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"alice","password":"my-password"}'
+
+# Claim the ID "home" and map it to one of your own /api/sub links
+curl -b jar.txt -X POST http://localhost:3000/api/links \
+  -H 'Content-Type: application/json' \
+  -d '{"id":"home","link":"http://localhost:3000/api/sub?target=clash&url=https%3A%2F%2Fexample.com%2Fsub"}'
+# => { "link": { "id": "home", "token": "…", "url": "http://localhost:3000/api/s/home?token=…" } }
+
+# Rotate the token — the previous URL stops working right away
+curl -b jar.txt -X POST http://localhost:3000/api/links/home/token
+```
+
+**Notes:**
+
+- Only this service's own `/api/sub` links (or their bare query string) are
+  accepted as the mapping target — arbitrary URLs are rejected, so the service
+  cannot be used as an open proxy.
+- Each account may hold up to 20 short links.
+
+### Configuration
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `BLOB_READ_WRITE_TOKEN` | Yes | Provided by a connected [Vercel Blob](https://vercel.com/docs/storage/vercel-blob) store; accounts and links are stored there. Without it the account endpoints return `503`. |
+| `AUTH_SECRET` | Recommended | Signs session cookies **and derives the storage pathnames**. Defaults to the Blob token. Set it once before creating accounts: changing it later signs everyone out and makes existing accounts and links unreachable. |
+| `REGISTER_CODE` | No | When set, registration requires this invite code. |
+| `DISABLE_REGISTER` | No | Set to `true` to close registration. |
+| `DATA_BLOB_READ_WRITE_TOKEN` | No | Token of a separate Blob store for account data. Defaults to `BLOB_READ_WRITE_TOKEN`, i.e. the same store used for uploads. |
+| `DATA_BLOB_ACCESS` | No | `private` stores account records as private blobs, readable only with the store token. Default `public`. |
+
+**About `DATA_BLOB_ACCESS=private`:** private blobs are not available on every
+Blob store — one that does not support them answers reads with
+`400 Bad Request`, which surfaces as *"Registration failed: Vercel Blob: Failed
+to fetch blob: 400 Bad Request"*. Keep the default there. On a store that does
+support them, turning it on is a free upgrade: records stop being reachable by
+URL at all, and each read costs one authenticated request instead of two.
+
+Passwords are stored as scrypt hashes and subscription tokens are 128-bit random
+values compared in constant time. Each record lives at an unguessable blob
+pathname derived with HMAC-SHA256 from `AUTH_SECRET`, and listing a Blob store
+requires its read-write token.
+
 ## Remote Config
 
 Supports ACL4SSR-style INI configuration files for generating proxy groups and rules.
@@ -179,11 +269,20 @@ npm run start
 src/
 ├── app/
 │   ├── api/
+│   │   ├── auth/             # Register / login / logout / session
+│   │   ├── links/            # Short link management
+│   │   ├── s/[id]/route.ts   # Short subscription link
 │   │   ├── sub/route.ts      # Subscription conversion API
+│   │   ├── upload/route.ts   # YAML upload API
 │   │   └── version/route.ts  # Version API
+│   ├── account/page.tsx      # Account & short link UI
 │   ├── layout.tsx            # Root layout
 │   └── page.tsx              # Web UI
 ├── lib/
+│   ├── api/                  # Shared route helpers
+│   ├── auth/                 # Password hashing & session cookies
+│   ├── store/                # User and short link records
+│   ├── subconvert.ts         # Shared conversion pipeline
 │   ├── generators/           # Output format generators
 │   │   ├── clash.ts          # Clash YAML generator
 │   │   ├── mixed.ts          # Mixed Base64 generator

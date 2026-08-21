@@ -45,6 +45,7 @@ export default function AccountPage() {
 
   // Per-row edit state
   const [editing, setEditing] = useState<Record<string, string>>({});
+  const [editingName, setEditingName] = useState<Record<string, string>>({});
   const [rowError, setRowError] = useState<Record<string, string>>({});
   const [rowBusy, setRowBusy] = useState<Record<string, boolean>>({});
   const [copied, setCopied] = useState('');
@@ -178,25 +179,33 @@ export default function AccountPage() {
     []
   );
 
-  const saveMapping = useCallback(
+  const saveLink = useCallback(
     (item: LinkItem) =>
       withRow(item.id, async () => {
-        const value = editing[item.id] ?? item.link;
         const res = await fetch(`/api/links/${item.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ link: value }),
+          body: JSON.stringify({
+            link: editing[item.id] ?? item.link,
+            name: editingName[item.id] ?? item.name,
+          }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
         setLinks((prev) => prev.map((l) => (l.id === item.id ? data.link : l)));
+        // Drop the local edits so the row follows the saved record again.
         setEditing((prev) => {
           const next = { ...prev };
           delete next[item.id];
           return next;
         });
+        setEditingName((prev) => {
+          const next = { ...prev };
+          delete next[item.id];
+          return next;
+        });
       }),
-    [editing, withRow]
+    [editing, editingName, withRow]
   );
 
   const rotateToken = useCallback(
@@ -401,6 +410,17 @@ export default function AccountPage() {
                     </button>
                   </div>
 
+                  <label style={{ ...styles.label, marginTop: '0.75rem' }}>Name</label>
+                  <input
+                    type="text"
+                    value={editingName[item.id] ?? item.name}
+                    onChange={(e) =>
+                      setEditingName((prev) => ({ ...prev, [item.id]: e.target.value }))
+                    }
+                    placeholder="Optional note"
+                    style={styles.input}
+                  />
+
                   <label style={{ ...styles.label, marginTop: '0.75rem' }}>
                     Mapped /api/sub Link
                   </label>
@@ -418,11 +438,11 @@ export default function AccountPage() {
                   <div style={styles.rowButtons}>
                     <button
                       type="button"
-                      onClick={() => saveMapping(item)}
+                      onClick={() => saveLink(item)}
                       disabled={rowBusy[item.id]}
                       style={styles.smallPrimaryButton}
                     >
-                      Save Mapping
+                      Save Changes
                     </button>
                     <button
                       type="button"

@@ -12,6 +12,7 @@
 - **代理分组**：根据配置自动生成代理分组
 - **规则加载**：从远程 URL 加载和解析规则集
 - **Web UI**：友好的用户界面，方便生成转换链接
+- **账号与短链接**：登录后申请固定的短 ID，通过 `/api/s/<id>?token=...` 获取订阅，token 可随时轮换
 - **Serverless**：专为 Vercel/Serverless 部署设计
 
 ## 快速开始
@@ -123,6 +124,79 @@ curl -X POST -F "file=@config.yaml" http://localhost:3000/api/upload
 GET /api/version
 ```
 
+## 账号与订阅短链接
+
+不用再把又长又难记的 `/api/sub?...` 链接丢给客户端：登录后申请一个固定的短 ID，
+ID 永远不变，映射的内容可以随时修改，链接泄露时轮换 token 即可。
+
+```
+GET /api/s/<id>?token=xxxxx
+```
+
+### 网页操作
+
+打开 `/account`（首页顶部的 **My Subscriptions**）：
+
+1. 注册账号（用户名 + 密码）或登录
+2. 填写短 **ID**（3-32 位，支持 `a-z 0-9 - _`）
+3. 粘贴**映射链接**：只支持本服务自己的 `/api/sub` 链接，可在首页生成后点击
+   **Save as Short Link** 自动带入
+4. 复制生成的 `/api/s/<id>?token=...` 填进客户端
+
+在同一页面还可以修改映射、轮换 token（旧链接立即失效）或删除短链接。
+
+### API 接口
+
+以下接口均使用 JSON，登录状态保存在 `sc_session` Cookie 中。
+
+| 接口 | 说明 |
+|------|------|
+| `POST /api/auth/register` | `{ username, password, code? }` 注册并登录 |
+| `POST /api/auth/login` | `{ username, password }` 登录 |
+| `POST /api/auth/logout` | 退出登录 |
+| `GET /api/auth/me` | 当前登录状态与服务端设置 |
+| `GET /api/links` | 列出自己的短链接 |
+| `POST /api/links` | `{ id, link, name? }` 创建短链接 |
+| `PATCH /api/links/<id>` | `{ link?, name? }` 修改映射 |
+| `POST /api/links/<id>/token` | 轮换 token |
+| `DELETE /api/links/<id>` | 删除短链接 |
+| `GET /api/s/<id>?token=…` | 获取订阅内容 |
+
+**示例：**
+
+```bash
+# 登录
+curl -c jar.txt -X POST http://localhost:3000/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"alice","password":"my-password"}'
+
+# 申请短 ID "home"，映射到自己的 /api/sub 链接
+curl -b jar.txt -X POST http://localhost:3000/api/links \
+  -H 'Content-Type: application/json' \
+  -d '{"id":"home","link":"http://localhost:3000/api/sub?target=clash&url=https%3A%2F%2Fexample.com%2Fsub"}'
+# => { "link": { "id": "home", "token": "…", "url": "http://localhost:3000/api/s/home?token=…" } }
+
+# 轮换 token，旧链接立刻失效
+curl -b jar.txt -X POST http://localhost:3000/api/links/home/token
+```
+
+**说明：**
+
+- 映射目标只接受本服务自己的 `/api/sub` 链接（或其查询字符串），任意外部 URL 会被
+  拒绝，避免服务被当作开放代理滥用。
+- 每个账号最多 20 个短链接。
+
+### 环境变量
+
+| 变量 | 必填 | 说明 |
+|------|------|------|
+| `BLOB_READ_WRITE_TOKEN` | 是 | 连接 [Vercel Blob](https://vercel.com/docs/storage/vercel-blob) 存储后自动提供；账号与短链接以 **private** blob 形式存放。未配置时账号相关接口返回 `503`。 |
+| `AUTH_SECRET` | 建议 | 用于签名会话 Cookie，默认回退到 Blob token；修改后所有人需要重新登录。 |
+| `REGISTER_CODE` | 否 | 设置后注册需要填写该邀请码。 |
+| `DISABLE_REGISTER` | 否 | 设为 `true` 关闭注册。 |
+
+密码使用 scrypt 加盐哈希存储，订阅 token 为 128 位随机值并使用常数时间比较。
+
 ## 远程配置
 
 支持 ACL4SSR 风格的 INI 配置文件，用于生成代理分组和规则。
@@ -177,11 +251,20 @@ npm run start
 src/
 ├── app/
 │   ├── api/
+│   │   ├── auth/             # 注册 / 登录 / 退出 / 会话
+│   │   ├── links/            # 短链接管理
+│   │   ├── s/[id]/route.ts   # 订阅短链接
 │   │   ├── sub/route.ts      # 订阅转换 API
+│   │   ├── upload/route.ts   # YAML 上传 API
 │   │   └── version/route.ts  # 版本 API
+│   ├── account/page.tsx      # 账号与短链接页面
 │   ├── layout.tsx            # 根布局
 │   └── page.tsx              # Web UI
 ├── lib/
+│   ├── api/                  # 路由公共辅助函数
+│   ├── auth/                 # 密码哈希与会话 Cookie
+│   ├── store/                # 用户与短链接数据
+│   ├── subconvert.ts         # 共享的转换流程
 │   ├── generators/           # 输出格式生成器
 │   │   ├── clash.ts          # Clash YAML 生成器
 │   │   ├── mixed.ts          # Mixed Base64 生成器

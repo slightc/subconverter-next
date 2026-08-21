@@ -147,7 +147,10 @@ export default function Home() {
       <div style={styles.container}>
         <header style={styles.header}>
           <h2 style={styles.title}>Subconverter Next</h2>
-          <p style={styles.subtitle}>Subscription Converter Service</p>
+          <p style={styles.subtitle}>
+            Subscription Converter Service ·{' '}
+            <a href="/account" style={styles.headerLink}>My Subscriptions</a>
+          </p>
         </header>
 
         <div style={styles.card}>
@@ -326,6 +329,12 @@ export default function Home() {
                 >
                   Open in New Tab
                 </a>
+                <a
+                  href={`/account?link=${encodeURIComponent(generatedUrl)}`}
+                  style={styles.shortLinkButton}
+                >
+                  Save as Short Link
+                </a>
               </div>
             </div>
           )}
@@ -378,6 +387,15 @@ export default function Home() {
                 </tr>
               </tbody>
             </table>
+
+            <h3 style={styles.apiEndpoint}>GET /api/s/&lt;id&gt;?token=xxxxx</h3>
+            <p style={styles.apiDesc}>
+              Short subscription link. Sign in on the{' '}
+              <a href="/account" style={styles.footerLink2}>My Subscriptions</a> page to
+              claim a fixed <code>id</code>, map it to one of your own{' '}
+              <code>/api/sub</code> links, and rotate its <code>token</code> whenever you
+              want (the old URL stops working immediately).
+            </p>
 
             <h3 style={styles.apiEndpoint}>POST /api/upload</h3>
             <p style={styles.apiDesc}>
@@ -608,6 +626,22 @@ const styles: { [key: string]: React.CSSProperties } = {
     textDecoration: 'none',
     border: '2px solid #667eea',
     borderRadius: '6px',
+  },
+  shortLinkButton: {
+    display: 'inline-block',
+    marginLeft: '0.5rem',
+    padding: '0.5rem 1rem',
+    fontSize: '0.85rem',
+    color: '#667eea',
+    textDecoration: 'none',
+    border: '2px solid #667eea',
+    borderRadius: '6px',
+  },
+  headerLink: {
+    color: 'white',
+  },
+  footerLink2: {
+    color: '#667eea',
   },
   apiDoc: {
     fontSize: '0.95rem',

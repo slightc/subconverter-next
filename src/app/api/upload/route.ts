@@ -16,8 +16,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import YAML from 'yaml';
 import { getStorageProvider } from '@/lib/storage';
 
-// Maximum upload size: 5 MB
-const MAX_UPLOAD_SIZE = 5 * 1024 * 1024;
+// Maximum upload size: 4 MB
+const MAX_UPLOAD_SIZE = 4 * 1024 * 1024;
 
 // Accepted file extensions
 const ACCEPTED_EXTENSIONS = ['.yaml', '.yml', '.txt'];

@@ -16,8 +16,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import YAML from 'yaml';
 import { getStorageProvider } from '@/lib/storage';
 
-// Maximum upload size: 1 MB (subscription configs are small)
-const MAX_UPLOAD_SIZE = 1024 * 1024;
+// Maximum upload size: 5 MB
+const MAX_UPLOAD_SIZE = 5 * 1024 * 1024;
 
 // Accepted file extensions
 const ACCEPTED_EXTENSIONS = ['.yaml', '.yml', '.txt'];
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
 
     if (Buffer.byteLength(content) > MAX_UPLOAD_SIZE) {
       return NextResponse.json(
-        { error: `File too large. Maximum size is ${MAX_UPLOAD_SIZE / 1024} KB` },
+        { error: `File too large. Maximum size is ${MAX_UPLOAD_SIZE / (1024 * 1024)} MB` },
         { status: 413 }
       );
     }

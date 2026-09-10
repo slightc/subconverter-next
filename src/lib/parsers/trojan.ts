@@ -2,8 +2,27 @@
  * Trojan protocol parser
  */
 
-import { Proxy, ProxyType, DEFAULT_GROUPS, createProxy } from '../types/proxy';
+import { Proxy, ProxyType, DEFAULT_GROUPS, createProxy, Tribool } from '../types/proxy';
 import { urlDecode, parseQueryString } from '../utils/string';
+
+/**
+ * Parse a boolean-like query parameter into a Tribool.
+ * Returns undefined when the value is absent or unrecognized so that we never
+ * fabricate a value that was not present in the original link.
+ */
+function parseUriBool(value: string | undefined): Tribool {
+  if (value === undefined) {
+    return undefined;
+  }
+  const normalized = value.toLowerCase();
+  if (normalized === '1' || normalized === 'true') {
+    return true;
+  }
+  if (normalized === '0' || normalized === 'false') {
+    return false;
+  }
+  return undefined;
+}
 
 /**
  * Parse Trojan URI
@@ -50,9 +69,15 @@ export function parseTrojan(uri: string): Proxy | null {
 
     // Parse additional parameters
     let host = params.sni || params.peer || '';
-    const tfo = params.tfo === '1' || params.tfo === 'true';
-    const scv = params.allowInsecure === '1' || params.allowInsecure === 'true';
-    
+    const tfo = parseUriBool(params.tfo);
+    // skip-cert-verify comes from allowInsecure / insecure in Trojan links.
+    // Preserve the explicit value (including `0`/false) so it round-trips.
+    const scv = parseUriBool(
+      params.allowInsecure ?? params.allowinsecure ?? params.insecure
+    );
+    // UDP relay flag, when the link carries it.
+    const udp = parseUriBool(params.udp);
+
     if (params.group) {
       group = urlDecode(params.group);
     }
@@ -87,8 +112,9 @@ export function parseTrojan(uri: string): Proxy | null {
       host: host || undefined,
       path: path || undefined,
       tlsSecure: true, // Trojan always uses TLS
-      tcpFastOpen: tfo || undefined,
-      allowInsecure: scv || undefined,
+      tcpFastOpen: tfo,
+      allowInsecure: scv,
+      udp,
       group,
     });
   } catch {

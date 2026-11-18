@@ -110,6 +110,13 @@ function parseRuleLine(line: string, targetGroup: string): string | null {
     return `DOMAIN-SUFFIX,${line},${targetGroup}`;
   }
 
+  // Logical rules contain nested commas and must be preserved as one expression.
+  // For example: AND,((NETWORK,UDP),(DST-PORT,443))
+  const logicalRule = line.match(/^(AND|OR|NOT)\s*,\s*(\(.+\))$/i);
+  if (logicalRule) {
+    return `${logicalRule[1].toUpperCase()},${logicalRule[2]},${targetGroup}`;
+  }
+
   // Handle full rule format: TYPE,VALUE or TYPE,VALUE,OPTIONS
   const parts = line.split(',').map(p => p.trim());
   if (parts.length < 2) return null;

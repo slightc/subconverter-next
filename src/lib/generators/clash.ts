@@ -190,7 +190,7 @@ function nodeToClashProxy(
 
   // Apply common options
   if (options.udp !== undefined || node.udp !== undefined) {
-    baseProxy.udp = node.udp ?? options.udp;
+    baseProxy.udp = options.udp ?? node.udp;
   }
 
   switch (node.type) {
